@@ -1,37 +1,39 @@
-pipeline{
-    agent{
-        label 'aws-agent'
-    }
-    stages{
-        stage('build'){
-            steps{
-                script{
-                    sh 'docker build -t java-app .'
-                }
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Bluezzydev/simple-java-app.git'
             }
         }
 
-        stage('push'){
-            steps{
-                script{
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'Password', usernameVariable: 'Username')]) {
-                    sh 'docker login --username $Username --password $Password'
-                    sh 'docker tag java-app $Username/java-app'
-                    sh 'docker push $Username/java-app'
+        stage('Build') {
+            steps {
+                script {
+                    try {
+                        echo 'Building...'
+                        sh 'echo "Building..."'
+                    } catch (Exception e) {
+                        echo 'Build failed!'
+                        error('Build failed!')
+                        throw e
                     }
                 }
             }
         }
 
-        stage('deploy'){
-            steps{
-                script{
-                    withAWS(credentials: 'aws-cli', region: 'us-east-2') {
-                    sh 'aws eks update-kubeconfig --region us-east-2 --name eks'
-                    sh 'kubectl apply -f ./k8s/deployment.yaml'
+        stage('Test') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'feature') {
+                        sh 'echo "Running tests..."'
+                    } else {
+                        sh 'echo "Skipping tests for non-feature branch."'
                     }
                 }
             }
         }
     }
 }
+
